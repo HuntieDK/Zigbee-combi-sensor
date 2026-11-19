@@ -10,9 +10,10 @@ it updated when decisions change.
 Planning done, toolchain verified, Z2M converter (`z2m/combi-sensor.mjs`) working: the device is
 supported and reconfigured in Z2M. `firmware/` builds, runs and rejoins the network after reflash:
 antenna select, Zigbee end device (3 occupancy + 2 On/Off endpoints), PIR polling driver with a
-host-tested debouncer (`./firmware/test/host/run.sh`). `APP_DEMO_MODE` in `app_config.h` toggles
-the LD2410C endpoint until its driver exists.
-Not yet written: LD2410C driver, switch handling + NVS persistence, `docs/`.
+host-tested debouncer, LD2410C protocol parser and presence filter (`./firmware/test/host/run.sh`).
+`APP_DEMO_MODE` in `app_config.h` is now off (it only toggles EP3 for bring-up).
+LD2410C driver (parser + presence + Bluetooth/engineering switches) is written and host-tested
+but NOT yet verified against a real module. Not yet written: `docs/`, still/moving energy sensors.
 PIR inputs verified on hardware by tying D0/D1 to 3V3 (occupancy_pir1/2 change in Z2M); real
 HC-SR501 sensors are not wired yet.
 Layout is in the plan §6; `main/zigbee_device.c` is the Zigbee API wrapper.
@@ -73,9 +74,11 @@ Layout is in the plan §6; `main/zigbee_device.c` is the Zigbee API wrapper.
 - **Network load matters**: never forward LD2410C data frames (~10 Hz) directly. Report on
   change, add a slow heartbeat, and keep a global report rate limit (plan §4).
 - LD2410C: 256000 baud 8N1. Config commands must be wrapped in enable-config (0xFF) and
-  end-config (0xFE). Bluetooth needs a module restart (0xA3) to take effect. Its state is
-  not readable, so persist the last commanded value in NVS and re-apply on boot.
-  Engineering mode is lost on power cycle; re-apply after boot.
+  end-config (0xFE); data frames stop while in config mode. Bluetooth needs a module restart
+  (0xA3) to take effect. The module is the source of truth for both switches (no NVS):
+  Bluetooth is read with the MAC query (0xA5; MAC 08:05:04:03:02:01 = off), engineering mode
+  from the type byte of every data frame. Engineering mode resets to off on module power cycle,
+  and the Zigbee switch then follows. Protocol checked against ESPHome's ld2410 component.
 - Keep the LD2410 frame parser and PIR debounce logic free of ESP-IDF dependencies so they
   can be unit-tested on the host.
 - Don't commit build output (`build/`, `managed_components/`, `sdkconfig` unless it is

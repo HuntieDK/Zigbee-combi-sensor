@@ -18,6 +18,9 @@
 #define APP_LD2410_TX_GPIO  16  /* D6: ESP TX -> LD2410C RX */
 #define APP_LD2410_RX_GPIO  17  /* D7: ESP RX <- LD2410C TX */
 #define APP_LD2410_BAUD     256000
+#define APP_LD2410_OFF_DELAY_MS      1000  /* hold "present" this long after the radar sees nobody */
+#define APP_LD2410_DATA_TIMEOUT_MS  10000  /* no frames for this long -> report no presence */
+#define APP_LD2410_ACK_TIMEOUT_MS     500  /* wait for a command acknowledgement */
 
 /* ---- Zigbee endpoints --------------------------------------------------- */
 #define APP_EP_PIR1         1   /* occupancy */
@@ -37,5 +40,5 @@
  * 1 = toggle the LD2410C occupancy endpoint (EP3) every APP_DEMO_PERIOD_S seconds so
  * the Zigbee/Z2M path can be tested before the radar driver exists. Set to 0 once
  * the LD2410C is wired and its driver is in. */
-#define APP_DEMO_MODE       1
+#define APP_DEMO_MODE       0
 #define APP_DEMO_PERIOD_S   20

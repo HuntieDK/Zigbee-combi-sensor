@@ -1,5 +1,6 @@
 #include "app_config.h"
 #include "antenna.h"
+#include "ld2410.h"
 #include "pir.h"
 #include "zigbee_device.h"
 
@@ -9,12 +10,9 @@
 #include "freertos/task.h"
 #include "nvs_flash.h"
 
-static const char *TAG = "combi";
-
 static void on_switch(uint8_t ep, bool on)
 {
-    /* TODO: forward to the LD2410C driver (Bluetooth / engineering mode). */
-    ESP_LOGI(TAG, "switch EP%u requested %s", ep, on ? "on" : "off");
+    ld2410_request_switch(ep, on);
 }
 
 #if APP_DEMO_MODE
@@ -36,6 +34,7 @@ void app_main(void)
     ESP_ERROR_CHECK(antenna_init());
     ESP_ERROR_CHECK(zigbee_device_start(on_switch));
     ESP_ERROR_CHECK(pir_start());
+    ESP_ERROR_CHECK(ld2410_start());
 #if APP_DEMO_MODE
     xTaskCreate(demo_task, "demo", 3072, NULL, 4, NULL);
 #endif

@@ -99,9 +99,12 @@ Notes:
 - Control commands (each wrapped in enable-config `0xFF` … end-config `0xFE`):
   - Engineering mode on/off: `0x62` / `0x63`.
   - Bluetooth on/off: `0xA4`, then restart module `0xA3` for it to take effect.
-- State of the switches: the module can't be reliably queried for Bluetooth state, so
-  firmware stores last commanded value in NVS and restores it on boot (re-sends the
-  command). Engineering mode is lost on module power cycle, so re-apply after boot.
+- State of the switches (revised after checking ESPHome's ld2410 component): the module is
+  the source of truth, so no NVS is needed. Bluetooth is read with the MAC query `0xA5`
+  (reported MAC 08:05:04:03:02:01 means Bluetooth off); engineering mode is read from the
+  type byte of every data frame (0x01 engineering, 0x02 normal). Engineering mode resets
+  to off on a module power cycle and the Zigbee switch follows. Data frames pause while the
+  module is in config mode, so every command sequence ends with end-config.
 - Engineering-mode frames carry per-gate energies; in phase 2 we derive aggregate
   moving/still energy from the basic frame (moving energy, still energy bytes), which
   is available even without engineering mode.

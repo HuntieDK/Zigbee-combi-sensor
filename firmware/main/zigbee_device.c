@@ -26,6 +26,9 @@ static const uint8_t s_switch_eps[2] = {APP_EP_LD2410_BT, APP_EP_LD2410_ENG};
 
 static zigbee_switch_cb_t s_switch_cb;
 static bool s_occupancy[OCCUPANCY_EP_COUNT];
+static bool s_switch[2];
+/* Set once the stack is operational. Updates made before that are cached and applied then. */
+static volatile bool s_ready;
 static esp_timer_handle_t s_commission_timer;
 static ezb_bdb_comm_mode_t s_pending_mode;
 
@@ -52,6 +55,20 @@ static void schedule_commissioning(ezb_bdb_comm_mode_t mode, uint32_t delay_ms)
     ESP_ERROR_CHECK(esp_timer_start_once(s_commission_timer, (uint64_t)delay_ms * 1000));
 }
 
+/* Push every cached value into the ZCL attributes. Called from the stack task when it becomes operational. */
+static void apply_all_cached(void)
+{
+    for (int i = 0; i < OCCUPANCY_EP_COUNT; i++) {
+        uint8_t v = s_occupancy[i] ? 1 : 0;
+        ezb_zcl_set_attr_value(s_occupancy_eps[i], EZB_ZCL_CLUSTER_ID_OCCUPANCY_SENSING, EZB_ZCL_CLUSTER_SERVER,
+                               EZB_ZCL_ATTR_OCCUPANCY_SENSING_OCCUPANCY_ID, EZB_ZCL_STD_MANUF_CODE, &v, false);
+    }
+    for (size_t i = 0; i < sizeof(s_switch_eps); i++) {
+        ezb_zcl_set_attr_value(s_switch_eps[i], EZB_ZCL_CLUSTER_ID_ON_OFF, EZB_ZCL_CLUSTER_SERVER,
+                               EZB_ZCL_ATTR_ON_OFF_ON_OFF_ID, EZB_ZCL_STD_MANUF_CODE, &s_switch[i], false);
+    }
+}
+
 /* ------------------------------------------------------------------------ */
 /* Signal + ZCL handlers                                                    */
 /* ------------------------------------------------------------------------ */
@@ -69,6 +86,8 @@ static bool app_signal_handler(const ezb_app_signal_t *app_signal)
     case EZB_BDB_SIGNAL_DEVICE_REBOOT: {
         ezb_bdb_comm_status_t status = *((ezb_bdb_comm_status_t *)ezb_app_signal_get_params(app_signal));
         if (status == EZB_BDB_STATUS_SUCCESS) {
+            s_ready = true;
+            apply_all_cached();
             ESP_LOGI(TAG, "Device started up in%s factory-reset mode", ezb_bdb_is_factory_new() ? "" : " non");
             if (ezb_bdb_is_factory_new()) {
                 ezb_bdb_start_top_level_commissioning(EZB_BDB_MODE_NETWORK_STEERING);
@@ -277,6 +296,9 @@ void zigbee_device_set_occupancy(uint8_t ep, bool occupied)
             return; /* unchanged: do not spend airtime */
         }
         s_occupancy[i] = occupied;
+        if (!s_ready) {
+            return; /* applied by apply_all_cached() once the stack is up */
+        }
         uint8_t value = occupied ? 1 : 0;
         esp_zigbee_lock_acquire(portMAX_DELAY);
         ezb_zcl_set_attr_value(ep, EZB_ZCL_CLUSTER_ID_OCCUPANCY_SENSING, EZB_ZCL_CLUSTER_SERVER,
@@ -293,6 +315,10 @@ void zigbee_device_set_switch(uint8_t ep, bool on)
     for (size_t i = 0; i < sizeof(s_switch_eps); i++) {
         if (s_switch_eps[i] != ep) {
             continue;
+        }
+        s_switch[i] = on;
+        if (!s_ready) {
+            return;
         }
         esp_zigbee_lock_acquire(portMAX_DELAY);
         ezb_zcl_set_attr_value(ep, EZB_ZCL_CLUSTER_ID_ON_OFF, EZB_ZCL_CLUSTER_SERVER, EZB_ZCL_ATTR_ON_OFF_ON_OFF_ID,
