@@ -44,6 +44,22 @@ Planning done, toolchain installed and verified. No project firmware written yet
 - Toolchain smoke test: the SDK's `examples/home_automation_devices/on_off_light` builds for
   esp32c6 (verified). Keep scratch clones of external SDKs out of the repo.
 
+## Lessons from toolchain bring-up
+
+- Verified: the SDK `temperature_sensor` example (end device) flashed to the XIAO and joined
+  Z2M (2.12.1, channel 11) over the on-board antenna. `on_off_light` is a network *former*
+  (coordinator-style) — do not use it for Z2M join tests. Switching between examples needs a
+  full `esptool erase_flash`, otherwise stale network data makes the end device loop with
+  "BDB Device Reboot failed".
+- The managed `esp-zigbee-lib` is the newer API (`ezb_*`, headers in `ezbee/`), with `esp_zb_*`
+  compat headers. Read the pinned version's headers/examples instead of relying on memory of
+  the old `esp_zb_*` API.
+- Default console uses UART0 on GPIO16/17 — the same pins as the LD2410C. `sdkconfig.defaults`
+  must set the console to USB-Serial-JTAG only and disable the UART console.
+- WSL without systemd: after `usbipd attach`, run `sudo modprobe cdc_acm` (module not loaded by
+  default) and `sudo chmod 666 /dev/ttyACM0` (no udev; resets on re-enumeration). To read the log
+  without a TTY, use pyserial with RTS toggled to reset the board.
+
 ## Conventions
 
 - Pin numbers, timings and rate limits live in one header (`app_config.h`), not scattered.

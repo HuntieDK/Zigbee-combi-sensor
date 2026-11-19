@@ -135,7 +135,7 @@ docs/                           wiring, setup notes
    `usbipd bind --busid <id>`, `usbipd attach --wsl --busid <id>`. Board then appears as
    `/dev/ttyACM0`. Add the user to the `dialout` group. Re-attach after each re-enumeration
    (the C6 re-enumerates on reset into the bootloader).
-5. **First test**: build the esp-zigbee-sdk `HA_on_off_light`/end-device example for
+5. **First test** (done: `temperature_sensor` example joined Z2M; see CLAUDE.md for lessons): build the esp-zigbee-sdk `HA_on_off_light`/end-device example for
    `esp32c6`, flash, confirm it joins in Z2M. Do this before any custom code.
 6. VS Code: ESP-IDF extension optional; CLI (`idf.py`) is the baseline.
 
