@@ -13,7 +13,8 @@ antenna select, Zigbee end device (3 occupancy + 2 On/Off endpoints), PIR pollin
 host-tested debouncer (`./firmware/test/host/run.sh`). `APP_DEMO_MODE` in `app_config.h` toggles
 the LD2410C endpoint until its driver exists.
 Not yet written: LD2410C driver, switch handling + NVS persistence, `docs/`.
-PIRs are not wired yet, so PIR behaviour is verified only by the host unit test.
+PIR inputs verified on hardware by tying D0/D1 to 3V3 (occupancy_pir1/2 change in Z2M); real
+HC-SR501 sensors are not wired yet.
 Layout is in the plan §6; `main/zigbee_device.c` is the Zigbee API wrapper.
 
 ## Key decisions (see plan for detail)
