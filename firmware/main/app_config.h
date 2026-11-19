@@ -13,6 +13,8 @@
 /* ---- Sensor pins (GPIO numbers; XIAO pad in comment) -------------------- */
 #define APP_PIR1_GPIO       0   /* D0 */
 #define APP_PIR2_GPIO       1   /* D1 */
+#define APP_PIR_POLL_MS     20  /* PIR sampling period */
+#define APP_PIR_DEBOUNCE_MS 100 /* level must be stable this long */
 #define APP_LD2410_TX_GPIO  16  /* D6: ESP TX -> LD2410C RX */
 #define APP_LD2410_RX_GPIO  17  /* D7: ESP RX <- LD2410C TX */
 #define APP_LD2410_BAUD     256000
@@ -32,8 +34,8 @@
 #define APP_ZB_CHANNEL_MASK 0x07FFF800U
 
 /* ---- Temporary bring-up aid --------------------------------------------- *
- * 1 = toggle the three occupancy endpoints every APP_DEMO_PERIOD_S seconds so
- * the Zigbee/Z2M path can be tested before the sensors are wired. Set to 0
- * once real sensors are in. */
+ * 1 = toggle the LD2410C occupancy endpoint (EP3) every APP_DEMO_PERIOD_S seconds so
+ * the Zigbee/Z2M path can be tested before the radar driver exists. Set to 0 once
+ * the LD2410C is wired and its driver is in. */
 #define APP_DEMO_MODE       1
 #define APP_DEMO_PERIOD_S   20

@@ -1,5 +1,6 @@
 #include "app_config.h"
 #include "antenna.h"
+#include "pir.h"
 #include "zigbee_device.h"
 
 #include "esp_check.h"
@@ -24,8 +25,6 @@ static void demo_task(void *arg)
     for (;;) {
         vTaskDelay(pdMS_TO_TICKS(APP_DEMO_PERIOD_S * 1000));
         state = !state;
-        zigbee_device_set_occupancy(APP_EP_PIR1, state);
-        zigbee_device_set_occupancy(APP_EP_PIR2, !state);
         zigbee_device_set_occupancy(APP_EP_LD2410, state);
     }
 }
@@ -36,6 +35,7 @@ void app_main(void)
     ESP_ERROR_CHECK(nvs_flash_init());
     ESP_ERROR_CHECK(antenna_init());
     ESP_ERROR_CHECK(zigbee_device_start(on_switch));
+    ESP_ERROR_CHECK(pir_start());
 #if APP_DEMO_MODE
     xTaskCreate(demo_task, "demo", 3072, NULL, 4, NULL);
 #endif

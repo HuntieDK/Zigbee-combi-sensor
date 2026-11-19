@@ -7,10 +7,13 @@ it updated when decisions change.
 
 ## Status
 
-Planning done, toolchain verified. `firmware/` contains a building, flashed skeleton: antenna
-select, Zigbee end device with 3 occupancy + 2 On/Off endpoints, and a demo task
-(`APP_DEMO_MODE` in `app_config.h`) that toggles occupancy until real sensors are added.
-Not yet written: PIR driver, LD2410C driver, NVS persistence, Z2M converter (`z2m/`), `docs/`.
+Planning done, toolchain verified, Z2M converter (`z2m/combi-sensor.mjs`) working: the device is
+supported and reconfigured in Z2M. `firmware/` builds, runs and rejoins the network after reflash:
+antenna select, Zigbee end device (3 occupancy + 2 On/Off endpoints), PIR polling driver with a
+host-tested debouncer (`./firmware/test/host/run.sh`). `APP_DEMO_MODE` in `app_config.h` toggles
+the LD2410C endpoint until its driver exists.
+Not yet written: LD2410C driver, switch handling + NVS persistence, `docs/`.
+PIRs are not wired yet, so PIR behaviour is verified only by the host unit test.
 Layout is in the plan §6; `main/zigbee_device.c` is the Zigbee API wrapper.
 
 ## Key decisions (see plan for detail)
