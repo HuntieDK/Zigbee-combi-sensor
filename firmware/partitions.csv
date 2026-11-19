@@ -1,0 +1,8 @@
+# Name,   Type, SubType, Offset,  Size, Flags
+# XIAO ESP32-C6 has 4 MB flash. The Zigbee stack stores its network data in "nvs"
+# and its factory data in "zb_fct".
+nvs,        data, nvs,      ,        0x6000,
+otadata,    data, ota,      ,        0x2000,
+phy_init,   data, phy,      ,        0x1000,
+factory,    app,  factory,  ,        1500K,
+zb_fct,     data, fat,      ,        1K,

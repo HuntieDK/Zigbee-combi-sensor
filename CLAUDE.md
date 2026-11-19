@@ -7,8 +7,11 @@ it updated when decisions change.
 
 ## Status
 
-Planning done, toolchain installed and verified. No project firmware written yet
-(`firmware/`, `z2m/`, `docs/` do not exist yet; the layout is in the plan §6).
+Planning done, toolchain verified. `firmware/` contains a building, flashed skeleton: antenna
+select, Zigbee end device with 3 occupancy + 2 On/Off endpoints, and a demo task
+(`APP_DEMO_MODE` in `app_config.h`) that toggles occupancy until real sensors are added.
+Not yet written: PIR driver, LD2410C driver, NVS persistence, Z2M converter (`z2m/`), `docs/`.
+Layout is in the plan §6; `main/zigbee_device.c` is the Zigbee API wrapper.
 
 ## Key decisions (see plan for detail)
 
