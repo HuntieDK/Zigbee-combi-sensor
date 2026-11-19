@@ -25,7 +25,7 @@ Non-goals (rev 1): router role, battery/sleep operation, OTA, per-gate energy da
 | Framework | ESP-IDF + `esp-zigbee-sdk` (Espressif's official stack; ESP32-C6 has native 802.15.4) |
 | Power | USB/mains 5 V, always on → non-sleepy end device (`ZB_ED`, rx-on-when-idle) |
 | Z2M | HA add-on, currently 2.12.1; user manages/upgrades it. Coordinator: Sonoff ZBDongle-P ("Dongle Plus-P", TI CC2652P, Z-Stack) |
-| Antenna | External antenna on the XIAO's U.FL connector (needs RF-switch GPIOs set in firmware, see §3) |
+| Antenna | Selectable at build time via `APP_USE_EXTERNAL_ANTENNA` in `app_config.h` (0 = on-board ceramic, 1 = external U.FL). **Start with on-board (0)**; external is a later option (see §3) |
 | LD2410C OUT pin | Not wired; presence comes from UART only |
 | PIRs | HC-SR501-type (3.3 V digital output) |
 | Dev env | WSL2 build + `usbipd-win` to attach the board for flashing/monitor |
@@ -41,7 +41,7 @@ XIAO ESP32-C6 pads used (verify against the Seeed pinout when wiring):
 | PIR 1 OUT | D0 | GPIO0 | Input, no pull needed (HC-SR501 drives it) |
 | PIR 2 OUT | D1 | GPIO1 | Input |
 | RF switch power | – | GPIO3 | Output LOW to enable the antenna switch (internal, not on a pad) |
-| Antenna select | – | GPIO14 | Output HIGH = external U.FL antenna (LOW = on-board ceramic) |
+| Antenna select | – | GPIO14 | Output LOW = on-board ceramic antenna, HIGH = external U.FL antenna |
 | 5 V | 5V pad | – | Feeds LD2410C VCC and both PIR VCC (HC-SR501 needs 4.5–20 V) |
 | GND | GND | – | Common ground |
 
@@ -52,7 +52,7 @@ Electrical checks:
 - LD2410C UART lines are 3.3 V logic: connect directly, no level shifter.
 - LD2410C draws ~80 mA at 5 V (peaks higher) — supply from USB 5 V, not the 3.3 V pin.
 - HC-SR501 output is ~3.3 V: OK for the C6 inputs. Confirm with a multimeter before connecting.
-- **External antenna**: firmware must drive GPIO3 LOW then GPIO14 HIGH early in `app_main`, before Zigbee starts (verify polarity against the Seeed XIAO ESP32-C6 wiki). Without this the radio uses the on-board antenna, or none. Attach the antenna before powering.
+- **Antenna selection**: controlled by `APP_USE_EXTERNAL_ANTENNA` in `app_config.h` (default `0`, on-board). Firmware always drives the RF switch explicitly early in `app_main`, before Zigbee starts: GPIO3 LOW (enable switch), then GPIO14 LOW for on-board or HIGH for external (verify polarity against the Seeed XIAO ESP32-C6 wiki). When external is selected, attach the antenna before powering.
 - Console/logging uses the built-in USB-Serial-JTAG, so UART1 on D6/D7 is free for the LD2410C.
 
 ## 4. Zigbee design
@@ -166,7 +166,7 @@ docs/                           wiring, setup notes
 - **Z2M converter**: Z2M 2.x loads external converters/definitions as ES modules (`.mjs`) from `external_converters/` in the Z2M data dir (HA add-on: `/config/zigbee2mqtt/external_converters/`). The converter API changes between Z2M releases; since the user manages Z2M updates, the converter is written against 2.12.1 and revalidated after upgrades.
 - **esp-zigbee-sdk versions** change quickly; pin exact component versions after the first
   working build.
-- **Coordinator**: ZBDongle-P (CC2652P) is well supported by Z2M's `zstack` driver; use a USB extension cable away from USB3 ports. No Wi-Fi on the device, so no coexistence concern. Keep the external antenna clear of the LD2410C and metal.
+- **Coordinator**: ZBDongle-P (CC2652P) is well supported by Z2M's `zstack` driver; use a USB extension cable away from USB3 ports. No Wi-Fi on the device, so no coexistence concern. If the external antenna is used, keep it clear of the LD2410C and metal.
 - **HC-SR501 power/noise**: the PIR is sensitive to supply ripple from the radar module;
   add a 100 µF capacitor on the 5 V rail if false triggers appear.
 - No open questions for you at this point; remaining unknowns are hardware behaviours to verify during bring-up.

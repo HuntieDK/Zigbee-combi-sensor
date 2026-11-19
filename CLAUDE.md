@@ -18,7 +18,9 @@ Planning done, toolchain installed and verified. No project firmware written yet
   EP5 engineering-mode switch; EP6/EP7 still/moving energy later (analog input).
 - Pins: LD2410C TX→GPIO17 (D7), RX←GPIO16 (D6), UART1; PIR1 GPIO0 (D0), PIR2 GPIO1 (D1).
   LD2410C OUT pin is **not wired**.
-- External U.FL antenna: firmware must set GPIO3 LOW, then GPIO14 HIGH before Zigbee starts.
+- Antenna is a build-time option `APP_USE_EXTERNAL_ANTENNA` in `app_config.h` (default 0 = on-board;
+  1 = external U.FL). Firmware always sets GPIO3 LOW, then GPIO14 (LOW on-board / HIGH external)
+  before Zigbee starts. Currently using the on-board antenna.
 - Z2M is the HA add-on (2.12.1), managed by the user. Multi-endpoint support needs an
   external converter written as an ES module (`z2m/combi-sensor.mjs`).
 - Coordinator: Sonoff ZBDongle-P (CC2652P).
