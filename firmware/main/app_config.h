@@ -5,8 +5,8 @@
 /* ---- Antenna (XIAO ESP32-C6 RF switch) ----------------------------------
  * 0 = on-board ceramic antenna (default), 1 = external U.FL antenna.
  * GPIO3 LOW enables the switch; GPIO14 LOW = on-board, HIGH = external.
- * TODO(verify): polarity against the Seeed XIAO ESP32-C6 wiki. */
-#define APP_USE_EXTERNAL_ANTENNA 0
+ * Polarity verified against the Seeed XIAO ESP32-C6 wiki (wiki.seeedstudio.com/xiao_esp32c6_getting_started). */
+#define APP_USE_EXTERNAL_ANTENNA 1
 #define APP_RF_SWITCH_ENABLE_GPIO 3
 #define APP_RF_SWITCH_SELECT_GPIO 14
 

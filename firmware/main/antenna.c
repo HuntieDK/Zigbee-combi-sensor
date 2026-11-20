@@ -3,6 +3,8 @@
 #include "app_config.h"
 #include "driver/gpio.h"
 #include "esp_log.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 
 static const char *TAG = "antenna";
 
@@ -18,6 +20,7 @@ esp_err_t antenna_init(void)
     }
     /* Power the switch first, then select the path. */
     gpio_set_level(APP_RF_SWITCH_ENABLE_GPIO, 0);
+    vTaskDelay(pdMS_TO_TICKS(100)); /* settle time, as in the Seeed wiki example */
     gpio_set_level(APP_RF_SWITCH_SELECT_GPIO, APP_USE_EXTERNAL_ANTENNA ? 1 : 0);
     ESP_LOGI(TAG, "Using %s antenna", APP_USE_EXTERNAL_ANTENNA ? "external" : "on-board");
     return ESP_OK;

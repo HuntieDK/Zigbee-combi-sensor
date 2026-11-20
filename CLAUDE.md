@@ -3,7 +3,9 @@
 Firmware for a Zigbee "combi-sensor" on a Seeed XIAO ESP32-C6: two PIR inputs plus an
 HLK-LD2410C radar, exposed through Zigbee2MQTT (Z2M) to Home Assistant.
 The approved design is in `planning/zigbee-combi-sensor-plan.md` — read it first and keep
-it updated when decisions change.
+it updated when decisions change. Reusable Zigbee/Z2M/toolchain findings (for this and future devices)
+are in `docs/zigbee-device-context.md`; keep it updated when you learn something new. License: 0BSD
+(`LICENSE.md`); public overview in `README.md`.
 
 ## Status
 
@@ -14,8 +16,8 @@ host-tested debouncer, LD2410C protocol parser and presence filter (`./firmware/
 `APP_DEMO_MODE` in `app_config.h` is now off (it only toggles EP3 for bring-up).
 LD2410C verified on hardware: presence (Z2M occupancy_radar follows the room), engineering-mode
 switch, and Bluetooth switch (module restart, ~2 s, state read back) all work.
-Not yet done: real HC-SR501 PIRs wired, external-antenna test (LQI was 196 on the on-board antenna
-after re-pairing, so low priority), long soak test, `docs/`, still/moving energy sensors (phase 2).
+Not yet done: real HC-SR501 PIRs wired, LQI comparison on the external antenna (on-board readings
+varied 65-196 depending on placement), long soak test, `docs/`, still/moving energy sensors (phase 2).
 Known harmless Z2M log noise: after a reconnect Z2M reads genOnOff on EP1 (UNSUPPORTED_CLUSTER).
 Layout is in the plan §6; `main/zigbee_device.c` is the Zigbee API wrapper.
 
@@ -27,9 +29,10 @@ Layout is in the plan §6; `main/zigbee_device.c` is the Zigbee API wrapper.
   EP5 engineering-mode switch; EP6/EP7 still/moving energy later (analog input).
 - Pins: LD2410C TX→GPIO17 (D7), RX←GPIO16 (D6), UART1; PIR1 GPIO0 (D0), PIR2 GPIO1 (D1).
   LD2410C OUT pin is **not wired**.
-- Antenna is a build-time option `APP_USE_EXTERNAL_ANTENNA` in `app_config.h` (default 0 = on-board;
-  1 = external U.FL). Firmware always sets GPIO3 LOW, then GPIO14 (LOW on-board / HIGH external)
-  before Zigbee starts. Currently using the on-board antenna.
+- Antenna is a build-time option `APP_USE_EXTERNAL_ANTENNA` in `app_config.h` (0 = on-board,
+  1 = external U.FL; currently 1, external antenna attached). Firmware always sets GPIO3 LOW, waits
+  100 ms, then sets GPIO14 (LOW on-board / HIGH external) before Zigbee starts. Polarity and all pin
+  numbers (D0-D7, BOOT=GPIO9, LED=GPIO15, RF switch GPIO3/14) verified against the Seeed wiki.
 - Pairing reset: hold the BOOT button (GPIO9) for 5 s while running (LED on GPIO15 blinks after 2 s);
   it calls `ezb_bdb_reset_via_local_action()`, leaves the network, wipes pairing and starts looking
   for a new one (needs permit-join). Never hold BOOT during reset/power-up (enters bootloader).
@@ -96,5 +99,6 @@ Layout is in the plan §6; `main/zigbee_device.c` is the Zigbee API wrapper.
 ## Verify before relying on
 
 Items in the plan that came from memory and must be checked against hardware or docs:
-RF-switch GPIO polarity (GPIO3/GPIO14), XIAO pad-to-GPIO mapping, LD2410C command codes and
-Bluetooth behaviour, and the Z2M external-converter API for the installed Z2M version.
+Verified since: RF-switch polarity, pad-to-GPIO mapping (Seeed wiki), LD2410C command codes and
+Bluetooth behaviour (on a real module), Z2M converter API (2.12.1). Still unverified: HC-SR501 sensors
+on real hardware.
