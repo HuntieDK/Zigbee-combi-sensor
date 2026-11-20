@@ -12,10 +12,11 @@ supported and reconfigured in Z2M. `firmware/` builds, runs and rejoins the netw
 antenna select, Zigbee end device (3 occupancy + 2 On/Off endpoints), PIR polling driver with a
 host-tested debouncer, LD2410C protocol parser and presence filter (`./firmware/test/host/run.sh`).
 `APP_DEMO_MODE` in `app_config.h` is now off (it only toggles EP3 for bring-up).
-LD2410C driver (parser + presence + Bluetooth/engineering switches) is written and host-tested
-but NOT yet verified against a real module. Not yet written: `docs/`, still/moving energy sensors.
-PIR inputs verified on hardware by tying D0/D1 to 3V3 (occupancy_pir1/2 change in Z2M); real
-HC-SR501 sensors are not wired yet.
+LD2410C verified on hardware: presence (Z2M occupancy_radar follows the room), engineering-mode
+switch, and Bluetooth switch (module restart, ~2 s, state read back) all work.
+Not yet done: real HC-SR501 PIRs wired, external-antenna test (LQI was 196 on the on-board antenna
+after re-pairing, so low priority), long soak test, `docs/`, still/moving energy sensors (phase 2).
+Known harmless Z2M log noise: after a reconnect Z2M reads genOnOff on EP1 (UNSUPPORTED_CLUSTER).
 Layout is in the plan §6; `main/zigbee_device.c` is the Zigbee API wrapper.
 
 ## Key decisions (see plan for detail)
@@ -29,6 +30,11 @@ Layout is in the plan §6; `main/zigbee_device.c` is the Zigbee API wrapper.
 - Antenna is a build-time option `APP_USE_EXTERNAL_ANTENNA` in `app_config.h` (default 0 = on-board;
   1 = external U.FL). Firmware always sets GPIO3 LOW, then GPIO14 (LOW on-board / HIGH external)
   before Zigbee starts. Currently using the on-board antenna.
+- Pairing reset: hold the BOOT button (GPIO9) for 5 s while running (LED on GPIO15 blinks after 2 s);
+  it calls `ezb_bdb_reset_via_local_action()`, leaves the network, wipes pairing and starts looking
+  for a new one (needs permit-join). Never hold BOOT during reset/power-up (enters bootloader).
+  Verified on hardware: LED blinks after 2 s and goes solid at 5 s (active-low LED confirmed), board
+  leaves and then re-pairs from scratch after deleting it in Z2M (clean entities, no manual Reconfigure).
 - Z2M is the HA add-on (2.12.1), managed by the user. Multi-endpoint support needs an
   external converter written as an ES module (`z2m/combi-sensor.mjs`).
 - Coordinator: Sonoff ZBDongle-P (CC2652P).
@@ -73,6 +79,9 @@ Layout is in the plan §6; `main/zigbee_device.c` is the Zigbee API wrapper.
 - Pin numbers, timings and rate limits live in one header (`app_config.h`), not scattered.
 - **Network load matters**: never forward LD2410C data frames (~10 Hz) directly. Report on
   change, add a slow heartbeat, and keep a global report rate limit (plan §4).
+- Reports go straight to the coordinator (short 0x0000, EP1), not through the binding table, so Z2M
+  gets them even after a rejoin wiped its bindings/reporting. All five endpoints are re-sent ~3 s
+  after every join/rejoin and every `APP_HEARTBEAT_S` (600 s). Verified: refresh sent after rejoin.
 - LD2410C: 256000 baud 8N1. Config commands must be wrapped in enable-config (0xFF) and
   end-config (0xFE); data frames stop while in config mode. Bluetooth needs a module restart
   (0xA3) to take effect. The module is the source of truth for both switches (no NVS):

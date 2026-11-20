@@ -1,5 +1,6 @@
 #include "app_config.h"
 #include "antenna.h"
+#include "button.h"
 #include "ld2410.h"
 #include "pir.h"
 #include "zigbee_device.h"
@@ -35,6 +36,7 @@ void app_main(void)
     ESP_ERROR_CHECK(zigbee_device_start(on_switch));
     ESP_ERROR_CHECK(pir_start());
     ESP_ERROR_CHECK(ld2410_start());
+    ESP_ERROR_CHECK(button_start());
 #if APP_DEMO_MODE
     xTaskCreate(demo_task, "demo", 3072, NULL, 4, NULL);
 #endif

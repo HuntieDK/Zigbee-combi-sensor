@@ -80,7 +80,9 @@ Notes:
 - Not a router: build as `ESP_ZB_DEVICE_TYPE_ED`, no routing table duties.
 
 ### Avoiding Zigbee network flooding
-- Occupancy: event-driven, only on change; additionally a slow heartbeat (e.g. 5–10 min).
+- Occupancy: event-driven, only on change; additionally a slow heartbeat (implemented: every 10 min,
+  `APP_HEARTBEAT_S`, plus once ~3 s after every join/rejoin). Reports are addressed directly to the
+  coordinator rather than via bindings, so they survive a lost Z2M binding/reporting setup.
 - PIR debouncing in firmware (HC-SR501 has its own hold time; we add ~100 ms debounce
   and don't send duplicate states).
 - LD2410C emits data frames ~10 Hz — **never forward these directly**. Firmware

@@ -25,3 +25,14 @@
 Later (phase 2): still / moving energy as analog sensors.
 
 The converter API changes between Z2M releases; re-check after upgrading Z2M.
+
+## Known library issue
+
+With Z2M 2.12.1 (zigbee-herdsman-converters 26.76.0), `m.occupancy({endpointNames: [a, b, c]})`
+produces one bogus `occupancy_a_b_c` entity and three identically labelled entries, so the
+converter calls `m.occupancy` once per endpoint. Revisit after Z2M updates; the single call may
+work again once the library clones the expose per endpoint.
+
+Keys such as `occupancy_1` or `state_4` in the device state are probably left over in Z2M's
+state cache from when the device was unsupported (unverified). If they persist after the
+converter fix and a Z2M restart, they are not coming from this converter's definition.

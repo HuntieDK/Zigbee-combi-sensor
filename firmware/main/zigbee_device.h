@@ -9,6 +9,10 @@ typedef void (*zigbee_switch_cb_t)(uint8_t ep, bool on);
 /* Create the Zigbee task and start the stack. Call once, after NVS init. */
 esp_err_t zigbee_device_start(zigbee_switch_cb_t switch_cb);
 
+/* Leave the Zigbee network and clear pairing data (local reset). The device then looks for a new
+ * network. Thread-safe. */
+void zigbee_device_factory_reset(void);
+
 /* Thread-safe. Updates the Occupancy attribute and reports it, only if it changed. */
 void zigbee_device_set_occupancy(uint8_t ep, bool occupied);
 

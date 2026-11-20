@@ -20,7 +20,12 @@ export default {
             endpoints: {pir1: 1, pir2: 2, radar: 3, radar_bluetooth: 4, radar_engineering: 5},
         }),
         // Reports on change, plus a 1 h heartbeat (library defaults) to keep network traffic low.
-        m.occupancy({endpointNames: ["pir1", "pir2", "radar"]}),
+        // One call per endpoint on purpose: in zigbee-herdsman-converters 26.76.0 (Z2M 2.12.1),
+        // occupancy() with several endpointNames renames one shared expose three times, producing a
+        // single bogus "occupancy_pir1_pir2_radar" entity. Single-endpoint calls are not affected.
+        m.occupancy({endpointNames: ["pir1"]}),
+        m.occupancy({endpointNames: ["pir2"]}),
+        m.occupancy({endpointNames: ["radar"]}),
         m.onOff({
             endpointNames: ["radar_bluetooth", "radar_engineering"],
             powerOnBehavior: false,

@@ -29,6 +29,9 @@ static bool s_occupancy[OCCUPANCY_EP_COUNT];
 static bool s_switch[2];
 /* Set once the stack is operational. Updates made before that are cached and applied then. */
 static volatile bool s_ready;
+static volatile bool s_joined;
+static esp_timer_handle_t s_join_report_timer;
+static esp_timer_handle_t s_heartbeat_timer;
 static esp_timer_handle_t s_commission_timer;
 static ezb_bdb_comm_mode_t s_pending_mode;
 
@@ -73,6 +76,9 @@ static void apply_all_cached(void)
 /* Signal + ZCL handlers                                                    */
 /* ------------------------------------------------------------------------ */
 
+static void on_joined(void);
+static void on_left(void);
+
 static bool app_signal_handler(const ezb_app_signal_t *app_signal)
 {
     ezb_app_signal_type_t type = ezb_app_signal_get_type(app_signal);
@@ -93,6 +99,7 @@ static bool app_signal_handler(const ezb_app_signal_t *app_signal)
                 ezb_bdb_start_top_level_commissioning(EZB_BDB_MODE_NETWORK_STEERING);
             } else {
                 ESP_LOGI(TAG, "Rejoined existing network");
+                on_joined();
             }
         } else {
             ESP_LOGW(TAG, "%s failed with status(0x%02x), retrying", ezb_app_signal_to_string(type), status);
@@ -104,6 +111,7 @@ static bool app_signal_handler(const ezb_app_signal_t *app_signal)
         if (status == EZB_BDB_STATUS_SUCCESS) {
             ezb_extpanid_t ext;
             ezb_nwk_get_extended_panid(&ext);
+            on_joined();
             ESP_LOGI(TAG, "Joined network: PAN 0x%04hx, channel %d, short addr 0x%04hx", ezb_nwk_get_panid(),
                      ezb_nwk_get_current_channel(), ezb_nwk_get_short_address());
         } else {
@@ -114,6 +122,7 @@ static bool app_signal_handler(const ezb_app_signal_t *app_signal)
     case EZB_ZDO_SIGNAL_LEAVE: {
         const ezb_zdo_signal_leave_params_t *p = ezb_app_signal_get_params(app_signal);
         ESP_LOGI(TAG, "Left network (type 0x%02x), will look for a new one", p->leave_type);
+        on_left();
         schedule_commissioning(EZB_BDB_MODE_NETWORK_STEERING, 2000);
     } break;
     default:
@@ -268,13 +277,18 @@ esp_err_t zigbee_device_start(zigbee_switch_cb_t switch_cb)
 /* Public update API                                                        */
 /* ------------------------------------------------------------------------ */
 
+/* Report one attribute straight to the coordinator (short 0x0000, endpoint 1) instead of through the
+ * binding table, so Z2M receives it even when its bindings/reporting setup were lost (e.g. after a rejoin).
+ * Caller must hold the Zigbee lock (or run in the stack task). */
 static void report_attr(uint8_t ep, uint16_t cluster_id, uint16_t attr_id)
 {
     ezb_zcl_report_attr_cmd_t cmd = {
         .cmd_ctrl =
             {
                 .fc.direction = EZB_ZCL_CMD_DIRECTION_TO_CLI,
-                .dst_addr.addr_mode = EZB_ADDR_MODE_NONE, /* use binding table */
+                .fc.dis_default_rsp = 1,
+                .dst_addr = EZB_ADDRESS_SHORT(0x0000),
+                .dst_ep = 1,
                 .src_ep = ep,
                 .cluster_id = cluster_id,
             },
@@ -284,6 +298,50 @@ static void report_attr(uint8_t ep, uint16_t cluster_id, uint16_t attr_id)
     if (err != EZB_ERR_NONE) {
         ESP_LOGD(TAG, "Report EP%u cluster 0x%04x failed: 0x%04x", ep, cluster_id, err);
     }
+}
+
+/* Report every endpoint's current value. Caller must hold the Zigbee lock. */
+static void report_all_locked(void)
+{
+    for (int i = 0; i < OCCUPANCY_EP_COUNT; i++) {
+        report_attr(s_occupancy_eps[i], EZB_ZCL_CLUSTER_ID_OCCUPANCY_SENSING,
+                    EZB_ZCL_ATTR_OCCUPANCY_SENSING_OCCUPANCY_ID);
+    }
+    for (size_t i = 0; i < sizeof(s_switch_eps); i++) {
+        report_attr(s_switch_eps[i], EZB_ZCL_CLUSTER_ID_ON_OFF, EZB_ZCL_ATTR_ON_OFF_ON_OFF_ID);
+    }
+}
+
+static void refresh_timer_cb(void *arg)
+{
+    (void)arg;
+    if (!s_ready || !s_joined) {
+        return;
+    }
+    esp_zigbee_lock_acquire(portMAX_DELAY);
+    report_all_locked();
+    esp_zigbee_lock_release();
+    ESP_LOGI(TAG, "State refresh sent to coordinator");
+}
+
+static void on_joined(void)
+{
+    s_joined = true;
+    if (!s_heartbeat_timer) {
+        const esp_timer_create_args_t hb = {.callback = refresh_timer_cb, .name = "zb_heartbeat"};
+        const esp_timer_create_args_t jr = {.callback = refresh_timer_cb, .name = "zb_join_report"};
+        ESP_ERROR_CHECK(esp_timer_create(&hb, &s_heartbeat_timer));
+        ESP_ERROR_CHECK(esp_timer_create(&jr, &s_join_report_timer));
+        ESP_ERROR_CHECK(esp_timer_start_periodic(s_heartbeat_timer, (uint64_t)APP_HEARTBEAT_S * 1000000ULL));
+    }
+    /* Shortly after joining, tell the coordinator the current state (restart the delay on repeat joins). */
+    esp_timer_stop(s_join_report_timer);
+    ESP_ERROR_CHECK(esp_timer_start_once(s_join_report_timer, (uint64_t)APP_JOIN_REPORT_DELAY_MS * 1000ULL));
+}
+
+static void on_left(void)
+{
+    s_joined = false;
 }
 
 void zigbee_device_set_occupancy(uint8_t ep, bool occupied)
@@ -327,4 +385,11 @@ void zigbee_device_set_switch(uint8_t ep, bool on)
         esp_zigbee_lock_release();
         return;
     }
+}
+
+void zigbee_device_factory_reset(void)
+{
+    esp_zigbee_lock_acquire(portMAX_DELAY);
+    ezb_bdb_reset_via_local_action();
+    esp_zigbee_lock_release();
 }
