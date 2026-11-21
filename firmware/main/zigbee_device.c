@@ -11,6 +11,8 @@
 #include "app_config.h"
 #include "esp_check.h"
 #include "esp_log.h"
+#include "esp_partition.h"
+#include "esp_system.h"
 #include "esp_timer.h"
 
 #include "esp_zigbee.h"
@@ -389,7 +391,21 @@ void zigbee_device_set_switch(uint8_t ep, bool on)
 
 void zigbee_device_factory_reset(void)
 {
-    esp_zigbee_lock_acquire(portMAX_DELAY);
-    ezb_bdb_reset_via_local_action();
-    esp_zigbee_lock_release();
+    if (s_joined) {
+        /* On a network: leave it cleanly (the coordinator is told) and wipe pairing. */
+        esp_zigbee_lock_acquire(portMAX_DELAY);
+        ezb_bdb_reset_via_local_action();
+        esp_zigbee_lock_release();
+        return;
+    }
+
+    /* Not on a network, e.g. the stored network is unreachable after moving the device. The SDK's local
+     * reset only works while on a network, so wipe the stored pairing (it lives in the "nvs" partition)
+     * and restart as a factory-fresh device. */
+    ESP_LOGW(TAG, "Not on a network: erasing the stored pairing and restarting");
+    const esp_partition_t *part = esp_partition_find_first(ESP_PARTITION_TYPE_DATA, ESP_PARTITION_SUBTYPE_DATA_NVS, ZB_STORAGE_PARTITION);
+    if (part && esp_partition_erase_range(part, 0, part->size) == ESP_OK) {
+        esp_restart();
+    }
+    ESP_LOGE(TAG, "Could not erase the stored pairing");
 }

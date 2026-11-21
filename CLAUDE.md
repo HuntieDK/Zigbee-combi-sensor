@@ -38,6 +38,9 @@ Layout is in the plan §6; `main/zigbee_device.c` is the Zigbee API wrapper.
   for a new one (needs permit-join). Never hold BOOT during reset/power-up (enters bootloader).
   Verified on hardware: LED blinks after 2 s and goes solid at 5 s (active-low LED confirmed), board
   leaves and then re-pairs from scratch after deleting it in Z2M (clean entities, no manual Reconfigure).
+  The SDK's local reset does nothing when the stored network is unreachable (e.g. after moving the
+  device), so when not joined the button erases the `nvs` partition and restarts instead. That second
+  path is flashed but NOT yet tested via the button (found when the device was moved to a new Z2M).
 - Z2M is the HA add-on (2.12.1), managed by the user. Multi-endpoint support needs an
   external converter written as an ES module (`z2m/combi-sensor.mjs`).
 - Coordinator: Sonoff ZBDongle-P (CC2652P).

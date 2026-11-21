@@ -91,6 +91,11 @@ with Python 3.14.
   `ezb_zcl_core_action_handler_register`, id `EZB_ZCL_CORE_SET_ATTR_VALUE_CB_ID`
   (`ezb_zcl_set_attr_value_message_t`); set `msg->out.result = EZB_ZCL_STATUS_SUCCESS`.
 - Leave network and wipe pairing: `ezb_bdb_reset_via_local_action()`. A leave signal with type 0 follows.
+  **It only works while the device is on a network.** After moving a device to a new place its stored
+  network is unreachable (log: "BDB Device Reboot failed with status(0x03)" every ~12 s, steering never
+  starts) and the call silently does nothing. The pairing is stored in the `nvs` partition, so for that case
+  erase it (`esp_partition_erase_range` on `nvs`) and `esp_restart()`; the device then comes up factory-new
+  and joins any open network (verified: erasing only that region let it join a different Z2M instantly).
 
 ## 5. Zigbee behaviour lessons
 
